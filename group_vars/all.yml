@@ -1,0 +1,43 @@
+---
+# Example configurations for different Ambari versions
+
+# For Ambari 2.7.8 (repository installation)
+# ambari_version: "2.7.8"
+# ambari_install_method: "repo"
+# ambari_repo_base_url: "https://archive.apache.org/dist/ambari"
+# ambari_stack_name: HDP
+# ambari_stack_version: "3.1"
+
+# For Ambari 2.7.9 (repository installation)
+# ambari_version: "2.7.9"
+# ambari_install_method: "repo"
+# ambari_repo_base_url: "https://archive.apache.org/dist/ambari"
+# ambari_stack_name: HDP
+# ambari_stack_version: "3.1"
+
+# For Ambari 3.0.0 (tarball installation - default)
+ambari_version: "3.0.0"
+ambari_install_method: "tarball"
+ambari_tarball_url: "https://archive.apache.org/dist/ambari/ambari-3.0.0/apache-ambari-3.0.0-src.tar.gz"
+ambari_install_dir: "/opt/ambari"
+ambari_build_from_source: false  # Set to true to build from source
+ambari_stack_name: Bigtop
+ambari_stack_version: "3.3"
+
+# Database configuration (required for Ambari 3.0.0)
+ambari_database_type: postgres  # or mysql
+ambari_database_install: true  # Install database locally
+ambari_create_service_databases: true  # Create Hive, Ranger, RangerKMS databases
+
+# Build options (when ambari_build_from_source is true)
+# maven_opts: "-Xmx2g -XX:MaxPermSize=512m"
+# maven_skip_tests: true
+
+# Repository mirrors for faster downloads (for repo method)
+# Apache main mirror
+# ambari_repo_base_url: "https://downloads.apache.org/ambari"
+
+# Alternative mirrors
+# US mirrors
+# ambari_repo_base_url: "https://dlcdn.apache.org/ambari"
+# ambari_repo_base_url: "https://archive.apache.org/dist/ambari"

@@ -1,0 +1,5 @@
+---
+# PostgreSQL configuration paths
+postgres_config_dir: "{{ '/var/lib/pgsql/data' if ansible_os_family == 'RedHat' else '/etc/postgresql/*/main' }}"
+postgres_service_name: postgresql
+postgres_data_dir: "{{ '/var/lib/pgsql/data' if ansible_os_family == 'RedHat' else '/var/lib/postgresql/*/main' }}"

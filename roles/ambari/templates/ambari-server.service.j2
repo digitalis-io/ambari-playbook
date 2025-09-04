@@ -1,0 +1,19 @@
+[Unit]
+Description=Ambari Server
+After=network.target
+
+[Service]
+Type=forking
+Environment="JAVA_HOME={{ java_home }}"
+Environment="AMBARI_SERVER_ROOT={{ ambari_install_dir }}/apache-ambari-{{ ambari_version }}-src"
+ExecStart=/usr/sbin/ambari-server start
+ExecStop=/usr/sbin/ambari-server stop
+ExecReload=/usr/sbin/ambari-server restart
+PIDFile=/var/run/ambari-server/ambari-server.pid
+User=root
+Group=root
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target

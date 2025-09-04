@@ -1,0 +1,38 @@
+#!/bin/bash
+# {{ ansible_managed }}
+# Ambari Server startup script for tarball installation
+
+AMBARI_ROOT="{{ ambari_install_dir }}/apache-ambari-{{ ambari_version }}-src"
+AMBARI_SERVER_ROOT="${AMBARI_ROOT}/ambari-server"
+PYTHON_EXECUTABLE="${PYTHON_EXECUTABLE:-python}"
+JAVA_HOME="{{ java_home }}"
+
+export JAVA_HOME
+export AMBARI_SERVER_ROOT
+export PYTHONPATH="${AMBARI_SERVER_ROOT}/src/main/python:${PYTHONPATH}"
+
+case "$1" in
+    start)
+        echo "Starting Ambari Server..."
+        ${PYTHON_EXECUTABLE} ${AMBARI_SERVER_ROOT}/src/main/python/ambari_server/serverConfiguration.py start
+        ;;
+    stop)
+        echo "Stopping Ambari Server..."
+        ${PYTHON_EXECUTABLE} ${AMBARI_SERVER_ROOT}/src/main/python/ambari_server/serverConfiguration.py stop
+        ;;
+    status)
+        ${PYTHON_EXECUTABLE} ${AMBARI_SERVER_ROOT}/src/main/python/ambari_server/serverConfiguration.py status
+        ;;
+    restart)
+        $0 stop
+        sleep 5
+        $0 start
+        ;;
+    setup)
+        ${PYTHON_EXECUTABLE} ${AMBARI_SERVER_ROOT}/src/main/python/ambari_server/serverSetup.py $2
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status|setup}"
+        exit 1
+        ;;
+esac

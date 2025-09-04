@@ -1,0 +1,32 @@
+---
+galaxy_info:
+  author: Your Name
+  description: Ansible role to deploy Apache Ambari Server and Agent
+  company: Your Company
+  license: Apache-2.0
+  min_ansible_version: "2.9"
+  
+  platforms:
+    - name: EL
+      versions:
+        - "7"
+        - "8"
+    - name: Ubuntu
+      versions:
+        - bionic
+        - focal
+    - name: Debian
+      versions:
+        - buster
+        - bullseye
+  
+  galaxy_tags:
+    - ambari
+    - hadoop
+    - bigdata
+    - hdp
+    - apache
+    - cluster
+    - monitoring
+
+dependencies: []

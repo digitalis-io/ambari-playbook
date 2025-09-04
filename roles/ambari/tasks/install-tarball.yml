@@ -1,0 +1,125 @@
+---
+# Tarball installation for Ambari (primarily for 3.0.0)
+
+- name: Install build dependencies for Ambari
+  package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - maven
+    - git
+    - gcc
+    - gcc-c++
+    - rpm-build
+    - python3
+    - python3-devel
+    - nodejs
+    - npm
+  when: ambari_build_from_source
+
+- name: Create Ambari installation directory
+  file:
+    path: "{{ ambari_install_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Download Ambari tarball
+  get_url:
+    url: "{{ ambari_tarball_url }}"
+    dest: "/tmp/apache-ambari-{{ ambari_version }}-src.tar.gz"
+    timeout: 300
+  register: download_result
+
+- name: Extract Ambari tarball
+  unarchive:
+    src: "/tmp/apache-ambari-{{ ambari_version }}-src.tar.gz"
+    dest: "{{ ambari_install_dir }}"
+    remote_src: yes
+    creates: "{{ ambari_install_dir }}/apache-ambari-{{ ambari_version }}-src"
+
+- name: Build Ambari from source
+  shell: |
+    cd {{ ambari_install_dir }}/apache-ambari-{{ ambari_version }}-src
+    mvn versions:set -DnewVersion={{ ambari_version }}
+    mvn -B clean install rpm:rpm -DnewVersion={{ ambari_version }} -DskipTests -Dpython.ver="python >= 2.6"
+  args:
+    creates: "{{ ambari_install_dir }}/apache-ambari-{{ ambari_version }}-src/ambari-server/target/rpm/ambari-server/RPMS/x86_64/"
+  when: 
+    - ambari_build_from_source
+    - ansible_os_family == "RedHat"
+
+- name: Install Ambari Server RPM from build
+  shell: |
+    yum localinstall -y {{ ambari_install_dir }}/apache-ambari-{{ ambari_version }}-src/ambari-server/target/rpm/ambari-server/RPMS/x86_64/ambari-server-*.rpm
+  when:
+    - ambari_build_from_source
+    - ambari_server
+    - ansible_os_family == "RedHat"
+
+- name: Install Ambari Agent RPM from build
+  shell: |
+    yum localinstall -y {{ ambari_install_dir }}/apache-ambari-{{ ambari_version }}-src/ambari-agent/target/rpm/ambari-agent/RPMS/x86_64/ambari-agent-*.rpm
+  when:
+    - ambari_build_from_source
+    - ambari_agent
+    - ansible_os_family == "RedHat"
+
+# Alternative: Direct installation without building
+- name: Setup Ambari binaries (without build)
+  block:
+    - name: Create Ambari directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      loop:
+        - /etc/ambari-server
+        - /etc/ambari-agent
+        - /var/lib/ambari-server
+        - /var/lib/ambari-agent
+        - /var/log/ambari-server
+        - /var/log/ambari-agent
+        - /var/run/ambari-server
+        - /var/run/ambari-agent
+
+    - name: Copy Ambari server files
+      synchronize:
+        src: "{{ ambari_install_dir }}/apache-ambari-{{ ambari_version }}-src/ambari-server/src/main/resources/"
+        dest: "/etc/ambari-server/"
+        rsync_opts:
+          - "--exclude=*.pyc"
+      when: ambari_server
+
+    - name: Copy Ambari agent files
+      synchronize:
+        src: "{{ ambari_install_dir }}/apache-ambari-{{ ambari_version }}-src/ambari-agent/src/main/python/ambari_agent/"
+        dest: "/var/lib/ambari-agent/"
+        rsync_opts:
+          - "--exclude=*.pyc"
+      when: ambari_agent
+
+    - name: Setup Ambari server Python scripts
+      copy:
+        src: "{{ ambari_install_dir }}/apache-ambari-{{ ambari_version }}-src/ambari-server/src/main/python/"
+        dest: "/usr/lib/python2.7/site-packages/ambari_server/"
+        remote_src: yes
+      when: ambari_server
+
+    - name: Create Ambari server startup script
+      template:
+        src: ambari-server.sh.j2
+        dest: /usr/sbin/ambari-server
+        mode: '0755'
+      when: ambari_server
+
+    - name: Create Ambari agent startup script
+      template:
+        src: ambari-agent.sh.j2
+        dest: /usr/sbin/ambari-agent
+        mode: '0755'
+      when: ambari_agent
+  when: not ambari_build_from_source

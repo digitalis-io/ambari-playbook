@@ -1,0 +1,62 @@
+---
+# Repository setup for Ambari 3.0.0
+
+- name: Setup Ambari 3.0.0 repository (Rocky Linux 8)
+  yum_repository:
+    name: ambari-3.0.0
+    description: Ambari 3.0.0 Repository
+    baseurl: "{{ ambari_3_repo_url }}/rocky8/"
+    gpgcheck: no
+    enabled: yes
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution == "Rocky"
+    - ansible_distribution_major_version == "8"
+
+- name: Setup Ambari 3.0.0 repository (Rocky Linux 9)
+  yum_repository:
+    name: ambari-3.0.0
+    description: Ambari 3.0.0 Repository
+    baseurl: "{{ ambari_3_repo_url }}/rocky9/"
+    gpgcheck: no
+    enabled: yes
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution == "Rocky"
+    - ansible_distribution_major_version == "9"
+
+- name: Setup Ambari 3.0.0 repository (CentOS/RHEL 8)
+  yum_repository:
+    name: ambari-3.0.0
+    description: Ambari 3.0.0 Repository
+    baseurl: "{{ ambari_3_repo_url }}/rocky8/"
+    gpgcheck: no
+    enabled: yes
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution in ["CentOS", "RedHat", "AlmaLinux"]
+    - ansible_distribution_major_version == "8"
+
+- name: Setup Bigtop 3.3.0 repository (Rocky Linux 8)
+  yum_repository:
+    name: bigtop-3.3.0
+    description: Bigtop 3.3.0 Repository
+    baseurl: "https://apache-ambari.com/dist/bigtop/3.3.0/rocky8/"
+    gpgcheck: no
+    enabled: yes
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution in ["Rocky", "CentOS", "RedHat", "AlmaLinux"]
+    - ansible_distribution_major_version == "8"
+
+- name: Setup Bigtop 3.3.0 repository (Rocky Linux 9)
+  yum_repository:
+    name: bigtop-3.3.0
+    description: Bigtop 3.3.0 Repository
+    baseurl: "https://apache-ambari.com/dist/bigtop/3.3.0/rocky9/"
+    gpgcheck: no
+    enabled: yes
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution in ["Rocky", "CentOS", "RedHat", "AlmaLinux"]
+    - ansible_distribution_major_version == "9"

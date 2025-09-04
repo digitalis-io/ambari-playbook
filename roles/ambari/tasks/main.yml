@@ -1,0 +1,34 @@
+---
+- name: Include OS-specific variables
+  include_vars: "{{ ansible_os_family }}.yml"
+  failed_when: false
+
+- name: Install common prerequisites
+  include_tasks: prerequisites.yml
+
+# Repository-based installation (for 2.x versions)
+- name: Install Ambari from repository
+  block:
+    - name: Install and configure Ambari Server
+      include_tasks: server.yml
+      when: ambari_server | default(false) | bool
+
+    - name: Install and configure Ambari Agent
+      include_tasks: agent.yml
+      when: ambari_agent | default(true) | bool
+  when: ambari_install_method == "repo"
+
+# Tarball-based installation (for 3.0.0 or custom builds)
+- name: Install Ambari from tarball
+  block:
+    - name: Install Ambari from tarball
+      include_tasks: install-tarball.yml
+
+    - name: Configure Ambari Server (tarball)
+      include_tasks: server-tarball.yml
+      when: ambari_server | default(false) | bool
+
+    - name: Configure Ambari Agent (tarball)
+      include_tasks: agent-tarball.yml
+      when: ambari_agent | default(true) | bool
+  when: ambari_install_method == "tarball"

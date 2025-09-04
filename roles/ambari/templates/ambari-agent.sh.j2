@@ -1,0 +1,33 @@
+#!/bin/bash
+# {{ ansible_managed }}
+# Ambari Agent startup script for tarball installation
+
+AMBARI_ROOT="{{ ambari_install_dir }}/apache-ambari-{{ ambari_version }}-src"
+AMBARI_AGENT_ROOT="${AMBARI_ROOT}/ambari-agent"
+PYTHON_EXECUTABLE="${PYTHON_EXECUTABLE:-python}"
+
+export AMBARI_AGENT_ROOT
+export PYTHONPATH="${AMBARI_AGENT_ROOT}/src/main/python/ambari_agent:${PYTHONPATH}"
+
+case "$1" in
+    start)
+        echo "Starting Ambari Agent..."
+        ${PYTHON_EXECUTABLE} ${AMBARI_AGENT_ROOT}/src/main/python/ambari_agent/main.py start
+        ;;
+    stop)
+        echo "Stopping Ambari Agent..."
+        ${PYTHON_EXECUTABLE} ${AMBARI_AGENT_ROOT}/src/main/python/ambari_agent/main.py stop
+        ;;
+    status)
+        ${PYTHON_EXECUTABLE} ${AMBARI_AGENT_ROOT}/src/main/python/ambari_agent/main.py status
+        ;;
+    restart)
+        $0 stop
+        sleep 5
+        $0 start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status}"
+        exit 1
+        ;;
+esac

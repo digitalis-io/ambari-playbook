@@ -1,0 +1,10 @@
+---
+- name: Deploy Ambari Cluster
+  hosts: all
+  become: yes
+  
+  roles:
+    - role: ambari
+      vars:
+        ambari_server: "{{ inventory_hostname in groups['ambari_server'] }}"
+        ambari_agent: "{{ inventory_hostname in groups['ambari_agents'] or inventory_hostname in groups['ambari_server'] }}"

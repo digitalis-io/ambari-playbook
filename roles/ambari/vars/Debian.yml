@@ -1,0 +1,18 @@
+---
+# Debian/Ubuntu specific variables
+java_package: openjdk-8-jdk
+java_home: /usr/lib/jvm/java-8-openjdk-amd64
+
+required_packages:
+  - curl
+  - wget
+  - unzip
+  - tar
+  - openssh-client
+  - openssh-server
+  - ntp
+  - openssl
+  - python
+  - python-dev
+  - gcc
+  - apt-transport-https

@@ -1,0 +1,66 @@
+---
+- name: Install Ambari Agent
+  package:
+    name: ambari-agent
+    state: present
+
+- name: Configure Ambari Agent
+  template:
+    src: ambari-agent.ini.j2
+    dest: /etc/ambari-agent/conf/ambari-agent.ini
+    backup: yes
+  notify: restart ambari-agent
+
+- name: Set Ambari Server hostname in agent config
+  lineinfile:
+    path: /etc/ambari-agent/conf/ambari-agent.ini
+    regexp: '^hostname='
+    line: "hostname={{ ambari_server_hostname }}"
+    insertafter: '^\[server\]'
+
+- name: Configure agent security
+  lineinfile:
+    path: /etc/ambari-agent/conf/ambari-agent.ini
+    regexp: "^{{ item.key }}="
+    line: "{{ item.key }}={{ item.value }}"
+    insertafter: '^\[security\]'
+  loop:
+    - { key: 'keysdir', value: '/var/lib/ambari-agent/keys' }
+    - { key: 'server_crt', value: 'ca.crt' }
+    - { key: 'passphrase_env_var_name', value: 'AMBARI_PASSPHRASE' }
+
+- name: Create Ambari Agent keys directory
+  file:
+    path: /var/lib/ambari-agent/keys
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Start and enable Ambari Agent
+  systemd:
+    name: ambari-agent
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+- name: Register agent with server
+  uri:
+    url: "http://{{ ambari_server_hostname }}:{{ ambari_server_port }}/api/v1/hosts/{{ ansible_hostname }}"
+    method: GET
+    user: "{{ ambari_admin_user }}"
+    password: "{{ ambari_admin_password }}"
+    force_basic_auth: yes
+    status_code: [200, 404]
+  register: host_registration
+  retries: 5
+  delay: 10
+
+- name: Check Ambari Agent status
+  command: ambari-agent status
+  register: ambari_agent_status
+  changed_when: false
+
+- name: Display Ambari Agent status
+  debug:
+    var: ambari_agent_status.stdout_lines

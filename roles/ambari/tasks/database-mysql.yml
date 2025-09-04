@@ -1,0 +1,158 @@
+---
+# MySQL 8.0 installation and configuration for Ambari
+
+- name: Remove existing MySQL packages
+  shell: |
+    for pkg in $(rpm -qa | grep -i mysql | grep -v mysql80-community-release); do
+      rpm -ev $pkg --nodeps || true
+    done
+  when: ansible_os_family == "RedHat"
+  ignore_errors: yes
+
+- name: Install MySQL 8.0 repository (RedHat/CentOS)
+  yum:
+    name: https://dev.mysql.com/get/mysql80-community-release-el{{ ansible_distribution_major_version }}-1.noarch.rpm
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Install MySQL 8.0 packages
+  package:
+    name:
+      - mysql-community-server
+      - mysql-community-client
+      - python3-PyMySQL
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Install MySQL 8.0 packages (Debian/Ubuntu)
+  package:
+    name:
+      - mysql-server
+      - mysql-client
+      - python3-pymysql
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Start and enable MySQL
+  systemd:
+    name: mysqld
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  when: ansible_os_family == "RedHat"
+
+- name: Start and enable MySQL (Debian/Ubuntu)
+  systemd:
+    name: mysql
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  when: ansible_os_family == "Debian"
+
+- name: Get MySQL temporary root password (RedHat/CentOS)
+  shell: grep 'temporary password' /var/log/mysqld.log | awk '{print $NF}'
+  register: mysql_temp_password
+  ignore_errors: yes
+  when: ansible_os_family == "RedHat"
+
+- name: Set MySQL root password
+  mysql_user:
+    name: root
+    password: "{{ ambari_database_password }}"
+    login_unix_socket: /var/lib/mysql/mysql.sock
+    state: present
+  ignore_errors: yes
+
+- name: Configure MySQL for Ambari
+  blockinfile:
+    path: /etc/my.cnf
+    insertafter: '\[mysqld\]'
+    block: |
+      # Ambari configuration
+      bind-address = 0.0.0.0
+      max_connections = 1000
+      max_allowed_packet = 256M
+      innodb_buffer_pool_size = 512M
+      innodb_log_file_size = 256M
+      innodb_flush_method = O_DIRECT
+      innodb_file_per_table = 1
+      default_authentication_plugin = mysql_native_password
+      sql_mode = ""
+  notify: restart mysql
+
+- name: Restart MySQL to apply configuration
+  systemd:
+    name: "{{ 'mysqld' if ansible_os_family == 'RedHat' else 'mysql' }}"
+    state: restarted
+
+- name: Wait for MySQL to start
+  wait_for:
+    port: 3306
+    delay: 5
+    timeout: 30
+
+- name: Copy MySQL setup SQL script
+  copy:
+    src: mysql.sql
+    dest: /tmp/ambari-mysql-setup.sql
+    mode: '0644'
+
+- name: Execute MySQL setup script
+  mysql_db:
+    name: all
+    state: import
+    target: /tmp/ambari-mysql-setup.sql
+    login_user: root
+    login_password: "{{ ambari_database_password }}"
+  ignore_errors: yes
+
+- name: Verify Ambari database exists
+  mysql_db:
+    name: ambari
+    state: present
+    encoding: utf8
+    collation: utf8_general_ci
+    login_user: root
+    login_password: "{{ ambari_database_password }}"
+
+- name: Download MySQL JDBC driver
+  get_url:
+    url: "https://dev.mysql.com/get/Downloads/Connector-J/{{ ambari_mysql_jdbc_driver }}"
+    dest: "/tmp/{{ ambari_mysql_jdbc_driver }}.tar.gz"
+    mode: '0644'
+
+- name: Extract MySQL JDBC driver
+  unarchive:
+    src: "/tmp/{{ ambari_mysql_jdbc_driver }}.tar.gz"
+    dest: /tmp
+    remote_src: yes
+    creates: "/tmp/{{ ambari_mysql_jdbc_driver }}/{{ ambari_mysql_jdbc_driver }}.jar"
+
+- name: Copy MySQL JDBC driver to Java directory
+  copy:
+    src: "/tmp/{{ ambari_mysql_jdbc_driver }}/{{ ambari_mysql_jdbc_driver }}.jar"
+    dest: "{{ ambari_jdbc_driver_path }}/{{ ambari_mysql_jdbc_driver }}.jar"
+    remote_src: yes
+    mode: '0644'
+
+- name: Create symbolic link for JDBC driver
+  file:
+    src: "{{ ambari_jdbc_driver_path }}/{{ ambari_mysql_jdbc_driver }}.jar"
+    dest: "{{ ambari_jdbc_driver_path }}/mysql-connector-java.jar"
+    state: link
+
+- name: Import Ambari MySQL schema from tarball
+  mysql_db:
+    name: ambari
+    state: import
+    target: "{{ ambari_install_dir }}/apache-ambari-{{ ambari_version }}-src/ambari-server/src/main/resources/Ambari-DDL-MySQL-CREATE.sql"
+    login_user: ambari
+    login_password: ambari
+  ignore_errors: yes
+  when: ambari_install_method == "tarball"
+
+- name: Import Ambari MySQL schema from package installation
+  shell: |
+    mysql -uambari -pambari ambari < /var/lib/ambari-server/resources/Ambari-DDL-MySQL-CREATE.sql
+  ignore_errors: yes
+  when: ambari_install_method == "repo"

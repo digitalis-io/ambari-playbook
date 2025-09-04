@@ -1,0 +1,124 @@
+---
+# PostgreSQL installation and configuration for Ambari
+
+- name: Install PostgreSQL packages
+  package:
+    name:
+      - postgresql
+      - postgresql-server
+      - postgresql-contrib
+      - python3-psycopg2
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Install PostgreSQL packages (Debian/Ubuntu)
+  package:
+    name:
+      - postgresql
+      - postgresql-contrib
+      - postgresql-client
+      - python3-psycopg2
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Initialize PostgreSQL database
+  command: /usr/bin/postgresql-setup --initdb
+  args:
+    creates: /var/lib/pgsql/data/PG_VERSION
+  when: ansible_os_family == "RedHat"
+
+- name: Configure PostgreSQL to listen on all interfaces
+  lineinfile:
+    path: "{{ postgres_config_dir }}/postgresql.conf"
+    regexp: "^#?listen_addresses"
+    line: "listen_addresses = '*'"
+  notify: restart postgresql
+
+- name: Configure PostgreSQL authentication - remove default entries
+  lineinfile:
+    path: "{{ postgres_config_dir }}/pg_hba.conf"
+    regexp: "{{ item }}"
+    state: absent
+  loop:
+    - '^host\s+all\s+all\s+127.0.0.1/32'
+    - '^host\s+all\s+all\s+::1/128'
+    - '^local\s+all\s+all'
+  notify: restart postgresql
+
+- name: Configure PostgreSQL authentication for Ambari
+  blockinfile:
+    path: "{{ postgres_config_dir }}/pg_hba.conf"
+    block: |
+      # Local connections
+      local   all             postgres                                peer
+      local   all             all                                     md5
+      # IPv4 local connections
+      host    all             all             127.0.0.1/32            md5
+      # IPv6 local connections
+      host    all             all             ::1/128                 md5
+      # Ambari specific rules
+      host    ambari          ambari          0.0.0.0/0               md5
+      host    hive            hive            0.0.0.0/0               md5
+      host    ranger          ranger          0.0.0.0/0               md5
+      host    rangerkms       rangerkms       0.0.0.0/0               md5
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - Ambari"
+  notify: restart postgresql
+
+- name: Start and enable PostgreSQL
+  systemd:
+    name: postgresql
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+- name: Wait for PostgreSQL to start
+  wait_for:
+    port: 5432
+    delay: 5
+    timeout: 30
+
+- name: Copy PostgreSQL setup SQL script
+  copy:
+    src: postgresql.sql
+    dest: /tmp/ambari-postgres-setup.sql
+    mode: '0644'
+
+- name: Execute PostgreSQL setup script for Ambari
+  postgresql_db:
+    name: postgres
+    state: restore
+    target: /tmp/ambari-postgres-setup.sql
+  become: true
+  become_user: postgres
+  ignore_errors: true
+
+
+- name: Download PostgreSQL JDBC driver
+  get_url:
+    url: "https://jdbc.postgresql.org/download/{{ ambari_postgres_jdbc_driver }}"
+    dest: "{{ ambari_jdbc_driver_path }}/{{ ambari_postgres_jdbc_driver }}"
+    mode: '0644'
+
+- name: Create symbolic link for JDBC driver
+  file:
+    src: "{{ ambari_jdbc_driver_path }}/{{ ambari_postgres_jdbc_driver }}"
+    dest: "{{ ambari_jdbc_driver_path }}/postgresql-jdbc.jar"
+    state: link
+
+- name: Import Ambari PostgreSQL schema from tarball
+  shell: |
+    PGPASSWORD='admin' psql -h localhost -p 5432 -U ambari -d ambari \
+      -f {{ ambari_install_dir }}/apache-ambari-{{ ambari_version }}-src/ambari-server/src/main/resources/Ambari-DDL-Postgres-CREATE.sql
+  environment:
+    PGPASSWORD: admin
+  ignore_errors: true
+  when: ambari_install_method == "tarball"
+
+- name: Import Ambari PostgreSQL schema from package
+  shell: |
+    PGPASSWORD='admin' psql -h localhost -p 5432 -U ambari -d ambari \
+      -f /var/lib/ambari-server/resources/Ambari-DDL-Postgres-CREATE.sql
+  environment:
+    PGPASSWORD: admin
+  ignore_errors: true
+  when: ambari_install_method == "repo"

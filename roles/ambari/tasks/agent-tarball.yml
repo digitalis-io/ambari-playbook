@@ -1,0 +1,54 @@
+---
+# Ambari Agent configuration for tarball installation
+
+- name: Create systemd service file for Ambari Agent
+  template:
+    src: ambari-agent.service.j2
+    dest: /etc/systemd/system/ambari-agent.service
+    mode: '0644'
+
+- name: Configure Ambari Agent
+  template:
+    src: ambari-agent.ini.j2
+    dest: /etc/ambari-agent/conf/ambari-agent.ini
+    backup: yes
+  notify: restart ambari-agent
+
+- name: Set Ambari Server hostname in agent config
+  lineinfile:
+    path: /etc/ambari-agent/conf/ambari-agent.ini
+    regexp: '^hostname='
+    line: "hostname={{ ambari_server_hostname }}"
+    insertafter: '^\[server\]'
+
+- name: Create Ambari Agent required directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - /var/lib/ambari-agent/keys
+    - /var/lib/ambari-agent/cache
+    - /var/lib/ambari-agent/data
+    - /var/lib/ambari-agent/tmp
+
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+
+- name: Start and enable Ambari Agent
+  systemd:
+    name: ambari-agent
+    state: started
+    enabled: yes
+
+- name: Check Ambari Agent status
+  shell: /usr/sbin/ambari-agent status
+  register: ambari_agent_status
+  changed_when: false
+
+- name: Display Ambari Agent status
+  debug:
+    var: ambari_agent_status.stdout_lines

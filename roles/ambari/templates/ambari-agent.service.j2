@@ -1,0 +1,19 @@
+[Unit]
+Description=Ambari Agent
+After=network.target
+
+[Service]
+Type=forking
+Environment="AMBARI_AGENT_ROOT={{ ambari_install_dir }}/apache-ambari-{{ ambari_version }}-src"
+Environment="PYTHONPATH=/usr/lib/python2.7/site-packages"
+ExecStart=/usr/sbin/ambari-agent start
+ExecStop=/usr/sbin/ambari-agent stop
+ExecReload=/usr/sbin/ambari-agent restart
+PIDFile=/var/run/ambari-agent/ambari-agent.pid
+User=root
+Group=root
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target

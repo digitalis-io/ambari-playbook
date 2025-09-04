@@ -1,0 +1,52 @@
+---
+- name: Install Ambari Server
+  package:
+    name: ambari-server
+    state: present
+
+- name: Setup JDBC driver for Ambari Server
+  command: |
+    ambari-server setup --jdbc-db={{ ambari_database_type }} --jdbc-driver={{ ambari_jdbc_driver_path }}/{{ 'postgresql-jdbc.jar' if ambari_database_type == 'postgres' else 'mysql-connector-java.jar' }}
+  when: ambari_database_type in ['postgres', 'mysql']
+  ignore_errors: yes
+
+- name: Configure Ambari Server with database
+  command: |
+    ambari-server setup --silent --java-home={{ java_home }} \
+      --database={{ ambari_database_type }} \
+      --databasehost={{ ambari_database_host }} \
+      --databaseport={{ ambari_database_port }} \
+      --databasename={{ ambari_database_name }} \
+      --databaseusername={{ ambari_database_username }} \
+      --databasepassword={{ ambari_database_password }}
+  no_log: true
+
+- name: Configure Ambari Server properties
+  template:
+    src: ambari.properties.j2
+    dest: /etc/ambari-server/conf/ambari.properties
+    backup: yes
+  notify: restart ambari-server
+
+- name: Start and enable Ambari Server
+  systemd:
+    name: ambari-server
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+- name: Wait for Ambari Server to be ready
+  wait_for:
+    port: "{{ ambari_server_port }}"
+    host: "{{ ansible_default_ipv4.address }}"
+    delay: 10
+    timeout: 300
+
+- name: Check Ambari Server status
+  command: ambari-server status
+  register: ambari_server_status
+  changed_when: false
+
+- name: Display Ambari Server status
+  debug:
+    var: ambari_server_status.stdout_lines

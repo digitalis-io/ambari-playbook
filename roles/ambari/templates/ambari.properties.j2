@@ -1,0 +1,58 @@
+# Ambari Server Properties
+# {{ ansible_managed }}
+
+# Server configuration
+ambari-server.user=root
+server.url_port={{ ambari_server_port }}
+server.secured.url_port=8443
+client.api.port=8080
+
+# Database configuration
+server.persistence.type={{ ambari_database_type }}
+server.jdbc.user.name={{ ambari_database_username }}
+server.jdbc.database={{ ambari_database_type }}
+server.jdbc.database_name={{ ambari_database_name }}
+{% if ambari_database_type != "embedded" %}
+server.jdbc.hostname={{ ambari_database_host }}
+server.jdbc.port={{ ambari_database_port }}
+server.jdbc.rca.user.name={{ ambari_database_username }}
+server.jdbc.rca.database_name={{ ambari_database_name }}
+{% endif %}
+
+# Java configuration
+java.home={{ java_home }}
+jdk.name=jdk-8
+jce.name=jce_policy-8.zip
+
+# Security
+security.server.two_way_ssl={{ ambari_two_way_ssl | lower }}
+api.ssl={{ ambari_ssl_enabled | lower }}
+
+# Performance
+server.execution.scheduler.maxThreads=5
+server.execution.scheduler.maxDbConnections=5
+server.execution.scheduler.misfire.toleration.minutes=480
+server.task.timeout=1200
+agent.task.timeout=900
+agent.package.install.task.timeout=1800
+
+# Views
+views.dir=/var/lib/ambari-server/resources/views
+
+# Metrics
+metrics.retrieval-service.cache.timeout=10800
+metrics.retrieval-service.request.ttl=150
+
+# Stack
+stack.upgrade.bypass.prechecks=false
+stack.upgrade.auto.retry.timeout.mins=0
+
+# Agent
+agent.auto.restart.after.upgrade=true
+hostname.resolution.retries=2
+
+# Heap size
+server.heap.size={{ ambari_server_heap_size }}
+
+# Cluster
+default.cluster.name={{ ambari_cluster_name }}

@@ -1,0 +1,38 @@
+---
+- name: restart postgresql
+  systemd:
+    name: postgresql
+    state: restarted
+    daemon_reload: yes
+
+- name: restart mysql
+  systemd:
+    name: "{{ 'mysqld' if ansible_os_family == 'RedHat' else 'mysql' }}"
+    state: restarted
+    daemon_reload: yes
+
+- name: restart ambari-server
+  systemd:
+    name: ambari-server
+    state: restarted
+    daemon_reload: yes
+  when: ambari_server | default(false) | bool
+
+- name: restart ambari-agent
+  systemd:
+    name: ambari-agent
+    state: restarted
+    daemon_reload: yes
+  when: ambari_agent | default(true) | bool
+
+- name: reload ambari-server
+  systemd:
+    name: ambari-server
+    state: reloaded
+  when: ambari_server | default(false) | bool
+
+- name: reload ambari-agent
+  systemd:
+    name: ambari-agent
+    state: reloaded
+  when: ambari_agent | default(true) | bool

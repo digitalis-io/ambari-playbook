@@ -1,0 +1,17 @@
+---
+# RedHat/CentOS specific variables
+java_package: java-1.8.0-openjdk
+java_home: /usr/lib/jvm/java-1.8.0-openjdk
+
+required_packages:
+  - curl
+  - wget
+  - unzip
+  - tar
+  - openssh-clients
+  - openssh-server
+  - chrony
+  - openssl
+  - python
+  - gcc
+  - python-devel

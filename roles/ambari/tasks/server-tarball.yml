@@ -1,0 +1,60 @@
+---
+# Ambari Server configuration for tarball installation
+
+- name: Create systemd service file for Ambari Server
+  template:
+    src: ambari-server.service.j2
+    dest: /etc/systemd/system/ambari-server.service
+    mode: '0644'
+
+- name: Configure Ambari Server properties
+  template:
+    src: ambari.properties.j2
+    dest: /etc/ambari-server/conf/ambari.properties
+    backup: yes
+  notify: restart ambari-server
+
+- name: Setup JDBC driver for Ambari Server
+  shell: |
+    /usr/sbin/ambari-server setup --jdbc-db={{ ambari_database_type }} \
+      --jdbc-driver={{ ambari_jdbc_driver_path }}/{{ 'postgresql-jdbc.jar' if ambari_database_type == 'postgres' else 'mysql-connector-java.jar' }}
+  ignore_errors: true
+
+- name: Setup Ambari Server with database
+  shell: |
+    export JAVA_HOME={{ java_home }}
+    /usr/sbin/ambari-server setup --silent \
+      --java-home={{ java_home }} \
+      --database={{ ambari_database_type }} \
+      --databasehost={{ ambari_database_host }} \
+      --databaseport={{ ambari_database_port }} \
+      --databasename={{ ambari_database_name }} \
+      --databaseusername={{ ambari_database_username }} \
+      --databasepassword={{ ambari_database_password }}
+  no_log: true
+
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+
+- name: Start and enable Ambari Server
+  systemd:
+    name: ambari-server
+    state: started
+    enabled: yes
+
+- name: Wait for Ambari Server to be ready
+  wait_for:
+    port: "{{ ambari_server_port }}"
+    host: "{{ ansible_default_ipv4.address }}"
+    delay: 10
+    timeout: 300
+
+- name: Check Ambari Server status
+  shell: /usr/sbin/ambari-server status
+  register: ambari_server_status
+  changed_when: false
+
+- name: Display Ambari Server status
+  debug:
+    var: ambari_server_status.stdout_lines
