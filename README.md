@@ -8,7 +8,8 @@ Ansible role for deploying Apache Ambari Server and Agents using either reposito
 - Target hosts running:
   - RHEL/CentOS 7/8
   - Rocky Linux 8/9
-  - Ubuntu 18.04/20.04
+  - Ubuntu 22.04 LTS / 24.04 LTS (recommended)
+  - Ubuntu 18.04 LTS / 20.04 LTS (legacy support)
 - SSH access to target hosts
 - Internet connectivity for package downloads
 - For Ambari 3.0.0: PostgreSQL or MySQL 8.0 database (automatically installed by role)
@@ -56,10 +57,15 @@ Key variables (see `roles/ambari/defaults/main.yml` for all options):
 
 ```ini
 [ambari_server]
-ambari-server.example.com
+ambari-server.example.com ansible_user=ubuntu
 
 [ambari_agents]
-ambari-agent-[1:3].example.com
+ambari-agent-[1:3].example.com ansible_user=ubuntu
+
+[all:vars]
+ansible_ssh_private_key_file=~/.ssh/id_rsa
+# For Ubuntu 22.04/24.04, Python 3 is default
+ansible_python_interpreter=/usr/bin/python3
 ```
 
 ## Usage
@@ -167,6 +173,19 @@ ambari_two_way_ssl: true
 ```yaml
 ambari_repo_base_url: "http://your-internal-repo.com/ambari"
 ```
+
+## Ubuntu-Specific Considerations
+
+### Ubuntu 22.04/24.04 LTS
+- Uses OpenJDK 11 (automatically configured)
+- Python 3 is the default interpreter
+- chrony replaces ntp for time synchronization
+- Fully compatible with Ambari 3.0.0 tarball installation
+
+### Ubuntu 18.04/20.04 LTS
+- Uses OpenJDK 8 for compatibility
+- Can use both Python 2 and Python 3
+- Repository method available for Ambari 2.x versions
 
 ## Post-Installation
 

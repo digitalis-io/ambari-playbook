@@ -13,12 +13,15 @@ galaxy_info:
         - "8"
     - name: Ubuntu
       versions:
-        - bionic
-        - focal
+        - jammy     # 22.04 LTS
+        - noble     # 24.04 LTS
+        - focal     # 20.04 LTS
+        - bionic    # 18.04 LTS
     - name: Debian
       versions:
         - buster
         - bullseye
+        - bookworm
   
   galaxy_tags:
     - ambari

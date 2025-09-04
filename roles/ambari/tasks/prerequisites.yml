@@ -39,25 +39,16 @@
     state: present
   when: ansible_os_family == "RedHat"
 
-- name: Add Ambari repository (Ubuntu 18.04)
+- name: Add Ambari repository (Ubuntu)
   apt_repository:
-    repo: "deb {{ ambari_repo_base_url }}/ambari/ubuntu18/2.x/updates/{{ ambari_version }} Ambari main"
+    repo: "deb {{ ambari_repo_base_url }}/ambari/ubuntu{{ ansible_distribution_version | replace('.', '') }}/2.x/updates/{{ ambari_version }} Ambari main"
     state: present
     update_cache: yes
   when: 
     - ansible_os_family == "Debian"
     - ansible_distribution == "Ubuntu"
-    - ansible_distribution_version == "18.04"
-
-- name: Add Ambari repository (Ubuntu 20.04)
-  apt_repository:
-    repo: "deb {{ ambari_repo_base_url }}/ambari/ubuntu20/2.x/updates/{{ ambari_version }} Ambari main"
-    state: present
-    update_cache: yes
-  when: 
-    - ansible_os_family == "Debian"
-    - ansible_distribution == "Ubuntu"
-    - ansible_distribution_version == "20.04"
+    - ansible_distribution_version in ["18.04", "20.04", "22.04", "24.04"]
+    - ambari_install_method == "repo"
 
 - name: Import Ambari GPG key (Debian/Ubuntu)
   apt_key:
